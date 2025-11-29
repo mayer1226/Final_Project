@@ -1,4 +1,4 @@
-﻿"""
+"""
 HỆ THỐNG TÌM KIẾM VÀ GỢI Ý XE MÁY CŨ
 =====================================
 
@@ -414,30 +414,22 @@ class HybridBikeRecommender:
         return out.reset_index(drop=True)
     
     def search(self, query, top_k=10):
-        """Search using hybrid features"""
-        if self.df is None or self.combined_features is None:
+        """Search using TF-IDF only (text search)"""
+        if self.df is None or self.text_features is None:
             raise ValueError("Model chưa sẵn sàng. Gọi set_dataframe() và build_features() trước.")
         
         query_text = query.lower()
         query_tfidf = self.tfidf.transform([query_text])
         
-        query_numeric = np.zeros((1, self.numeric_features.shape[1]), dtype=np.float32)
-        query_binary = np.zeros((1, self.binary_features.shape[1]), dtype=np.float32)
-        
-        query_vec = hstack([
-            query_tfidf.multiply(self.weights["text"]),
-            csr_matrix(query_numeric * self.weights["numeric"]),
-            csr_matrix(query_binary * self.weights["binary"])
-        ], format="csr")
-        
-        similarities = cosine_similarity(query_vec, self.combined_features).flatten()
+        # Use only TF-IDF for text search (more accurate)
+        similarities = cosine_similarity(query_tfidf, self.text_features).flatten()
         
         top_indices = np.argsort(similarities)[::-1][:top_k]
         results = self.df.iloc[top_indices].copy()
         results['search_score'] = similarities[top_indices]
-        results['position'] = top_indices
         
-        return results.reset_index(drop=True)
+        # Keep original index - DO NOT reset
+        return results
 
     def save(self, path):
         joblib.dump(self, path)
@@ -829,56 +821,69 @@ cluster_colors = {
 # ==============================
 
 def search_items(query, df_search, top_k=10):
-    """Hybrid search using HybridBikeRecommender model"""
+    """Text search using TF-IDF"""
     if len(df_search) == 0:
         return pd.DataFrame()
     
     try:
-        if hybrid_model is not None and hybrid_model.combined_features is not None:
-            search_top_k = min(top_k * 3, 100)
-            all_results = hybrid_model.search(query, top_k=search_top_k)
-            
-            search_indices = df_search.index.tolist()
-            filtered_results = all_results[all_results.index.isin(search_indices)].head(top_k)
-            
-            return filtered_results.reset_index(drop=True)
+        # Use simple TF-IDF search for accuracy
+        search_parts = []
         
-        else:
-            search_parts = []
-            
-            if 'brand' in df_search.columns:
-                search_parts.append(df_search['brand'].fillna(''))
-            
-            if 'model' in df_search.columns:
-                search_parts.append(df_search['model'].fillna(''))
-            
-            if 'vehicle_type' in df_search.columns:
-                search_parts.append(df_search['vehicle_type'].fillna(''))
-            
-            if 'description_norm' in df_search.columns:
-                search_parts.append(df_search['description_norm'].fillna(''))
-            elif 'description' in df_search.columns:
-                search_parts.append(df_search['description'].fillna(''))
-            
-            if not search_parts:
-                return df_search.head(top_k).copy()
-            
-            search_text = search_parts[0]
-            for part in search_parts[1:]:
-                search_text = search_text + ' ' + part
-            
-            vectorizer = TfidfVectorizer(ngram_range=(1, 2), max_features=1000)
-            tfidf_matrix = vectorizer.fit_transform(search_text)
-            query_vec = vectorizer.transform([query])
-            
-            similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
-            
-            top_indices = similarities.argsort()[::-1][:top_k]
-            results = df_search.iloc[top_indices].copy()
-            results['search_score'] = similarities[top_indices]
-            results['position'] = top_indices
-            
-            return results[results['search_score'] > 0]
+        
+        if 'brand' in df_search.columns:
+            search_parts.append(df_search['brand'].fillna(''))
+        
+        if 'model' in df_search.columns:
+            search_parts.append(df_search['model'].fillna(''))
+        
+        if 'vehicle_type_display' in df_search.columns:
+            search_parts.append(df_search['vehicle_type_display'].fillna(''))
+        elif 'vtype_display' in df_search.columns:
+            search_parts.append(df_search['vtype_display'].fillna(''))
+        
+        # Add location for better search
+        if 'location' in df_search.columns:
+            search_parts.append(df_search['location'].fillna(''))
+        
+        if 'description' in df_search.columns:
+            search_parts.append(df_search['description'].fillna(''))
+        
+        # Add cluster label if exists
+        if 'cluster_label' in df_search.columns:
+            search_parts.append(df_search['cluster_label'].fillna(''))
+        
+        if not search_parts:
+            return df_search.head(top_k).copy()
+        
+        # Combine all text fields
+        search_text = search_parts[0]
+        for part in search_parts[1:]:
+            search_text = search_text + ' ' + part
+        
+        # TF-IDF vectorization with optimized parameters
+        vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2),      # Unigrams + Bigrams
+            max_features=3000,       # Increased for better coverage
+            min_df=1,                # Keep all terms
+            lowercase=True,          # Case insensitive
+            token_pattern=r'(?u)\b\w+\b'  # Include all words
+        )
+        tfidf_matrix = vectorizer.fit_transform(search_text)
+        query_vec = vectorizer.transform([query.lower()])
+        
+        # Calculate similarities
+        similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
+        
+        # Get top results (get more first, then filter)
+        top_indices = similarities.argsort()[::-1][:min(top_k * 5, len(df_search))]
+        results = df_search.iloc[top_indices].copy()
+        results['search_score'] = similarities[top_indices]
+        
+        # Filter only relevant results (score > 0.01 to avoid very low matches)
+        results = results[results['search_score'] > 0.01].head(top_k)
+        
+        # Keep original index - DO NOT reset
+        return results
     except Exception as e:
         return df_search.head(top_k).copy()
 
