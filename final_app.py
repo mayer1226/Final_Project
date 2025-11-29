@@ -1081,50 +1081,23 @@ def display_bike_card(bike, view_mode="grid"):
 def show_banner():
     """Display banner for all pages except About"""
     if 'page' in st.session_state and st.session_state.page != "about":
+        # Nếu không load được banner thì bỏ qua
         try:
-            import os
-            
-            # Thử load từ file local trước (cho dev)
-            if os.path.exists("banner.jpg"):
-                st.markdown("""
-                <style>
-                    .stImage {
-                        margin-top: -6rem !important;
-                        margin-bottom: 1rem !important;
-                    }
-                </style>
-                """, unsafe_allow_html=True)
-                st.image("banner.jpg", use_container_width=True)
-            else:
-                # Fallback: load từ GitHub (cho production)
-                st.markdown("""
-                <style>
-                    .stImage {
-                        margin-top: -6rem !important;
-                        margin-bottom: 1rem !important;
-                    }
-                </style>
-                """, unsafe_allow_html=True)
-                st.image(
-                    "https://raw.githubusercontent.com/mayer1226/Final_Project/refs/heads/main/banner.jpg",
-                    use_container_width=True
-                )
-        except:
-            # Fallback gradient nếu có lỗi
             st.markdown("""
-            <div style="
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 50px 20px;
-                text-align: center;
-                color: white;
-                margin-top: -6rem;
-                margin-bottom: 1rem;
-            ">
-                <h1 style="margin: 0; font-size: 2.5em; font-weight: 700;">
-                    🏍️ Motorcycle Recommendation System
-                </h1>
-            </div>
+            <style>
+                .stImage {
+                    margin-top: -6rem !important;
+                    margin-bottom: 1rem !important;
+                }
+            </style>
             """, unsafe_allow_html=True)
+            st.image(
+                "https://raw.githubusercontent.com/mayer1226/Final_Project/refs/heads/main/banner.jpg",
+                use_container_width=True
+            )
+        except:
+            # Không hiển thị gì nếu không load được
+            pass
 
 # ==============================
 # 📄 PAGE FUNCTIONS
