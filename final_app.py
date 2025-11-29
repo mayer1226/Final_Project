@@ -4645,24 +4645,34 @@ with st.sidebar:
             st.rerun()
     
     st.markdown("---")
-    st.markdown("""
-        <div style='
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 15px;
-            border-radius: 10px;
-            color: white;
-            text-align: center;
-        '>
-            <h4 style='margin: 0 0 10px 0; color: white;'>👥 Tác Giả</h4>
-            <p style='margin: 5px 0; font-size: 14px;'>
-                <strong>Hoàng Phúc & Bích Thủy</strong>
-            </p>
-            <hr style='border: 1px solid rgba(255,255,255,0.3); margin: 10px 0;'>
-            <p style='margin: 5px 0; font-size: 13px;'>
-                📅 <strong>Ngày phát hành:</strong><br>28/11/2025
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+st.markdown("""
+    <div style='
+        margin-top: 30px;
+        margin-bottom: 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+    '>
+        <h4 style='margin: 0 0 10px 0; color: white;'>👥 Tác Giả</h4>
+        
+        <p style='margin: 5px 0; font-size: 14px;'>
+            <strong>Hoàng Phúc & Bích Thủy</strong>
+        </p>
+
+        <p style='margin: 5px 0; font-size: 13px;'>
+            👩‍🏫 <strong>Giáo viên hướng dẫn:</strong><br>Khuất Thùy Phương
+        </p>
+
+        <hr style='border: 1px solid rgba(255,255,255,0.3); margin: 10px 0;'>
+
+        <p style='margin: 5px 0; font-size: 13px;'>
+            📅 <strong>Ngày phát hành:</strong><br>28/11/2025
+        </p>
+    </div>
+""", unsafe_allow_html=True)
+
 
 # ==============================
 # 🔀 PAGE ROUTING
@@ -4685,3 +4695,4 @@ else:
 
 st.markdown("---")
 st.markdown(f"*Hệ thống gợi ý xe máy - Tổng số xe: {len(df):,}*")
+
