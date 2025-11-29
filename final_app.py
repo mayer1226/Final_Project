@@ -1,4 +1,4 @@
-﻿"""
+"""
 HỆ THỐNG TÌM KIẾM VÀ GỢI Ý XE MÁY CŨ
 =====================================
 
@@ -414,22 +414,30 @@ class HybridBikeRecommender:
         return out.reset_index(drop=True)
     
     def search(self, query, top_k=10):
-        """Search using TF-IDF only (text search)"""
-        if self.df is None or self.text_features is None:
+        """Search using hybrid features"""
+        if self.df is None or self.combined_features is None:
             raise ValueError("Model chưa sẵn sàng. Gọi set_dataframe() và build_features() trước.")
         
         query_text = query.lower()
         query_tfidf = self.tfidf.transform([query_text])
         
-        # Use only TF-IDF for text search (more accurate)
-        similarities = cosine_similarity(query_tfidf, self.text_features).flatten()
+        query_numeric = np.zeros((1, self.numeric_features.shape[1]), dtype=np.float32)
+        query_binary = np.zeros((1, self.binary_features.shape[1]), dtype=np.float32)
+        
+        query_vec = hstack([
+            query_tfidf.multiply(self.weights["text"]),
+            csr_matrix(query_numeric * self.weights["numeric"]),
+            csr_matrix(query_binary * self.weights["binary"])
+        ], format="csr")
+        
+        similarities = cosine_similarity(query_vec, self.combined_features).flatten()
         
         top_indices = np.argsort(similarities)[::-1][:top_k]
         results = self.df.iloc[top_indices].copy()
         results['search_score'] = similarities[top_indices]
+        results['position'] = top_indices
         
-        # Keep original index - DO NOT reset
-        return results
+        return results.reset_index(drop=True)
 
     def save(self, path):
         joblib.dump(self, path)
@@ -828,7 +836,6 @@ def search_items(query, df_search, top_k=10):
     try:
         # Use simple TF-IDF search for accuracy
         search_parts = []
-        
         
         if 'brand' in df_search.columns:
             search_parts.append(df_search['brand'].fillna(''))
